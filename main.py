@@ -7,11 +7,16 @@ api = Api(app)
 
 class Welcome(Resource):
     def get(self):
-        result = {'data': 'true'}
+        result = {'data': 'welcome'}
         return jsonify(result)
         
+class Test(Resource):
+    def get(self):
+        result = {'data': 'test'}
+        return jsonify(result)
 
-api.add_resource(Welcome, '/welcome') # Route_2
+api.add_resource(Welcome, '/')
+api.add_resource(Test, '/test')
 
 
 if __name__ == '__main__':
