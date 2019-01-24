@@ -1,43 +1,208 @@
-# Copyright 2015 Google Inc. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-# [START gae_flex_quickstart]
-import logging
+import platform
+import pickle
+import re
 
 from flask import Flask
-
+from flask import request, jsonify
+from selenium import webdriver
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
 app = Flask(__name__)
 
+def save_cookies(driver, location):
+    pickle.dump(driver.get_cookies(), open(location, "wb"))
+
+def load_cookies(driver, location, url=None):
+    cookies = pickle.load(open(location, "rb"))
+    driver.delete_all_cookies()
+    # have to be on a page before you can add any cookies, any page - does not matter which
+    driver.get("https://mobile.facebook.com" if url is None else url)
+    for cookie in cookies:
+        driver.add_cookie(cookie)
 
 @app.route('/')
-def hello():
-    """Return a friendly HTTP greeting."""
+def home():
     return 'Hello World!'
 
+@app.route('/api/crawl', methods=['GET'])
+def simple_crawl():
+    url = request.args.get('url')
+    results = [{'result':url}]
+    return jsonify(results)
 
-@app.errorhandler(500)
-def server_error(e):
-    logging.exception('An error occurred during a request.')
-    return """
-    An internal error occurred: <pre>{}</pre>
-    See logs for full stacktrace.
-    """.format(e), 500
+@app.route('/api/login', methods=['GET'])
+def login():
+    global driver
 
+    options = Options()
+
+    #  Code to disable notifications pop up of Chrome Browser
+    #options.add_argument("--disable-notifications")
+    #options.add_argument("--disable-infobars")
+    #options.add_argument("--mute-audio")
+    #options.add_argument("headless")
+    options.add_argument('--user-agent="Mozilla/5.0 (Windows NT 6.1; WOW64; rv:50.0) Gecko/20100101 Firefox/50.0"')
+
+
+    # Path where you want to save/load cookies to/from aka C:\my\fav\directory\cookies.txt
+    cookies_location = "cookies.txt"
+
+    #driver = webdriver.Chrome(executable_path="/usr/bin/chromedriver", options=options)
+    capabilities = DesiredCapabilities.CHROME.copy()
+
+    driver = webdriver.Remote(command_executor='http://127.0.0.1:4444/wd/hub', desired_capabilities=capabilities, options=options)
+
+    driver.get("https://mobile.facebook.com")
+
+    email = "tuandaohcmdev@gmail.com"
+    password = "Minhtuan123@"
+    
+    driver.find_element_by_name('email').send_keys(email)
+    driver.find_element_by_name('pass').send_keys(password)
+
+    #clicking on login button
+    driver.find_element_by_name('login').click()
+
+    save_cookies(driver, cookies_location)
+    
+    # filling the form
+    message = driver.page_source
+
+    driver.quit()
+    #results = [{'result':message}]
+    #return jsonify(results)
+    return message
+
+@app.route('/api/login2', methods=['GET'])
+def re_login():
+    global driver
+
+    options = Options()
+
+    #  Code to disable notifications pop up of Chrome Browser
+    #options.add_argument("--disable-notifications")
+    #options.add_argument("--disable-infobars")
+    #options.add_argument("--mute-audio")
+    #options.add_argument("headless")
+
+    options.add_argument('--user-agent="Mozilla/5.0 (Windows NT 6.1; WOW64; rv:50.0) Gecko/20100101 Firefox/50.0"')
+
+    capabilities = DesiredCapabilities.CHROME.copy()
+
+    # Path where you want to save/load cookies to/from aka C:\my\fav\directory\cookies.txt
+    cookies_location = "cookies.txt"
+
+    #driver = webdriver.Chrome(executable_path="/usr/bin/chromedriver", options=options)
+
+    driver = webdriver.Remote(command_executor='http://127.0.0.1:4444/wd/hub', desired_capabilities=capabilities, options=options)
+
+    
+    load_cookies(driver, cookies_location)
+
+
+    driver.get("https://mobile.facebook.com/100030348953422?v=timeline")
+
+    # filling the form
+    message = driver.page_source
+
+    driver.quit()
+
+    #results = [{'result':message}]
+    #return jsonify(results)
+    return message
+
+@app.route('/api/go_url', methods=['GET'])
+def go_url():
+    global driver
+
+    url = request.args.get('url')
+
+    if (url is None):
+        results = [{'result':-1}]
+        return jsonify(results)
+
+    options = Options()
+    options.add_argument('--user-agent="Mozilla/5.0 (Windows NT 6.1; WOW64; rv:50.0) Gecko/20100101 Firefox/50.0"')
+
+    capabilities = DesiredCapabilities.CHROME.copy()
+
+    #not support on chrome, will test on firefox later
+    #capabilities['pageLoadStrategy'] = "none"
+
+    cookies_location = "cookies.txt"
+
+    #driver = webdriver.Chrome(executable_path="/usr/bin/chromedriver", options=options)
+
+    driver = webdriver.Remote(command_executor='http://127.0.0.1:4444/wd/hub', desired_capabilities=capabilities, options=options)
+    
+    load_cookies(driver, cookies_location, url)
+
+    driver.get(url)
+
+    source_html = driver.page_source
+
+    # filling the form
+
+    driver.quit()
+
+    return source_html
+
+@app.route('/api/check_share', methods=['GET'])
+def check_share():
+    global driver
+
+    url = request.args.get('url')
+    post_id = request.args.get('post_id')
+
+    if (url is None) or (post_id is None):
+        results = [{'result':-1}]
+        return jsonify(results)
+
+
+    options = Options()
+
+    #  Code to disable notifications pop up of Chrome Browser
+    #options.add_argument("--disable-notifications")
+    #options.add_argument("--disable-infobars")
+    #options.add_argument("--mute-audio")
+    #options.add_argument("headless")
+
+    options.add_argument('--user-agent="Mozilla/5.0 (Windows NT 6.1; WOW64; rv:50.0) Gecko/20100101 Firefox/50.0"')
+
+    capabilities = DesiredCapabilities.CHROME.copy()
+    capabilities['pageLoadStrategy'] = "none"
+
+    # Path where you want to save/load cookies to/from aka C:\my\fav\directory\cookies.txt
+    cookies_location = "cookies.txt"
+
+    #driver = webdriver.Chrome(executable_path="/usr/bin/chromedriver", options=options)
+
+    driver = webdriver.Remote(command_executor='http://127.0.0.1:4444/wd/hub', desired_capabilities=capabilities, options=options)
+
+    
+    load_cookies(driver, cookies_location, url)
+
+    driver.get(url)
+
+    source_html = driver.page_source
+
+    # filling the form
+
+    driver.quit()
+
+    if re.search(post_id, source_html):
+        results = [{'result':1}]
+        return jsonify(results)
+    else:
+        results = [{'result':0}]
+        return jsonify(results)
 
 if __name__ == '__main__':
     # This is used when running locally. Gunicorn is used to run the
     # application on Google App Engine. See entrypoint in app.yaml.
-    app.run(host='127.0.0.1', port=8080, debug=True)
-# [END gae_flex_quickstart]
+    app.run(host='0.0.0.0', port=8080, debug=True)
