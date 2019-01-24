@@ -123,7 +123,7 @@ def go_url():
     url = request.args.get('url')
 
     if (url is None):
-        results = [{'result':-1}]
+        results = {'result':-1}
         return jsonify(results)
 
     options = Options()
@@ -140,7 +140,7 @@ def go_url():
 
     driver = webdriver.Remote(command_executor='http://127.0.0.1:4444/wd/hub', desired_capabilities=capabilities, options=options)
     
-    load_cookies(driver, cookies_location, url)
+    load_cookies(driver, cookies_location)
 
     driver.get(url)
 
@@ -152,15 +152,17 @@ def go_url():
 
     return source_html
 
-@app.route('/api/check_share', methods=['GET'])
-def check_share():
+
+
+@app.route('/api/check_share_url', methods=['GET'])
+def check_share_url():
     global driver
 
     url = request.args.get('url')
     post_id = request.args.get('post_id')
 
     if (url is None) or (post_id is None):
-        results = [{'result':-1}]
+        results = {'result':-1}
         return jsonify(results)
 
 
@@ -175,7 +177,7 @@ def check_share():
     options.add_argument('--user-agent="Mozilla/5.0 (Windows NT 6.1; WOW64; rv:50.0) Gecko/20100101 Firefox/50.0"')
 
     capabilities = DesiredCapabilities.CHROME.copy()
-    capabilities['pageLoadStrategy'] = "none"
+    #capabilities['pageLoadStrategy'] = "none"
 
     # Path where you want to save/load cookies to/from aka C:\my\fav\directory\cookies.txt
     cookies_location = "cookies.txt"
@@ -185,7 +187,7 @@ def check_share():
     driver = webdriver.Remote(command_executor='http://127.0.0.1:4444/wd/hub', desired_capabilities=capabilities, options=options)
 
     
-    load_cookies(driver, cookies_location, url)
+    load_cookies(driver, cookies_location)
 
     driver.get(url)
 
@@ -196,10 +198,109 @@ def check_share():
     driver.quit()
 
     if re.search(post_id, source_html):
-        results = [{'result':1}]
+        results = {'result':1}
         return jsonify(results)
     else:
-        results = [{'result':0}]
+        results = {'result':0}
+        return jsonify(results)
+
+@app.route('/api/go_user_profile', methods=['GET'])
+def go_user_profile():
+    global driver
+
+    user_id = request.args.get('user_id')
+
+    if (user_id is None):
+        results = {'result':-1}
+        return jsonify(results)
+
+    url = "https://mobile.facebook.com/" + user_id + "?v=timeline"
+
+    #return url
+
+    options = Options()
+
+    #  Code to disable notifications pop up of Chrome Browser
+    #options.add_argument("--disable-notifications")
+    #options.add_argument("--disable-infobars")
+    #options.add_argument("--mute-audio")
+    #options.add_argument("headless")
+
+    options.add_argument('--user-agent="Mozilla/5.0 (Windows NT 6.1; WOW64; rv:50.0) Gecko/20100101 Firefox/50.0"')
+
+    capabilities = DesiredCapabilities.CHROME.copy()
+    #capabilities['pageLoadStrategy'] = "none"
+
+    # Path where you want to save/load cookies to/from aka C:\my\fav\directory\cookies.txt
+    cookies_location = "cookies.txt"
+
+    #driver = webdriver.Chrome(executable_path="/usr/bin/chromedriver", options=options)
+
+    driver = webdriver.Remote(command_executor='http://127.0.0.1:4444/wd/hub', desired_capabilities=capabilities, options=options)
+
+    
+    load_cookies(driver, cookies_location)
+
+    driver.get(url)
+
+    source_html = driver.page_source
+
+    return source_html
+
+    # filling the form
+
+@app.route('/api/check_share', methods=['GET'])
+def check_share():
+    global driver
+
+    user_id = request.args.get('user_id')
+    post_id = request.args.get('post_id')
+
+    if (user_id is None) or (post_id is None):
+        results = {'result':-1}
+        return jsonify(results)
+
+    url = "https://mobile.facebook.com/" + user_id + "?v=timeline"
+
+    #return url
+
+    options = Options()
+
+    #  Code to disable notifications pop up of Chrome Browser
+    #options.add_argument("--disable-notifications")
+    #options.add_argument("--disable-infobars")
+    #options.add_argument("--mute-audio")
+    #options.add_argument("headless")
+
+    options.add_argument('--user-agent="Mozilla/5.0 (Windows NT 6.1; WOW64; rv:50.0) Gecko/20100101 Firefox/50.0"')
+
+    capabilities = DesiredCapabilities.CHROME.copy()
+    #capabilities['pageLoadStrategy'] = "none"
+
+    # Path where you want to save/load cookies to/from aka C:\my\fav\directory\cookies.txt
+    cookies_location = "cookies.txt"
+
+    #driver = webdriver.Chrome(executable_path="/usr/bin/chromedriver", options=options)
+
+    driver = webdriver.Remote(command_executor='http://127.0.0.1:4444/wd/hub', desired_capabilities=capabilities, options=options)
+
+    
+    load_cookies(driver, cookies_location)
+
+    driver.get(url)
+
+    source_html = driver.page_source
+    driver.quit()
+    #return source_html
+    # filling the form
+
+    
+
+    if re.search(post_id, source_html):
+        results = {"set_attributes":{"has_shared": "1"}}
+        return jsonify(results)
+    else:
+        results = {"set_attributes":{"has_shared": "0"}}
         return jsonify(results)
 
 if __name__ == '__main__':
